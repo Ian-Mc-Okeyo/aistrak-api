@@ -1,5 +1,5 @@
 from app.schemas.user import UserCreate, UserUpdate
-from app.models.user import User, UserSetting
+from app.models.user import User, UserSetting, UserAchievement
 from app.models.wallet import UserWallet
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
@@ -58,3 +58,7 @@ def update_clerk_user(db, user: UserUpdate, id: str):
 def get_user_wallet(db: Session, user_id: str):
     user_wallet = db.query(UserWallet).filter(UserWallet.user_id == user_id).first()
     return user_wallet
+
+def get_user_achievements(db: Session, user_id: str):
+    user_achievements = db.query(UserAchievement).filter(UserAchievement.user_id == user_id).all()
+    return user_achievements

@@ -1,7 +1,8 @@
 from app.models.prediction import Prediction
 from app.models.transaction import Transaction
 from app.models.token import Token
-from app.models.user import User
+from app.models.user import User, UserWallet, UserAchievement
+from datetime import datetime
 from app.core.database import Base
 from sqlalchemy.orm import Session
 from app.schemas.prediction import CreateMpesaPrediction
@@ -96,6 +97,33 @@ def get_predictions_with_details(db: Session, skip: int = 0, limit: int = 100):
         )
         .join(User, Prediction.user_id == User.id)
         .join(Token, Prediction.token_id == Token.id)
+        .order_by(Prediction.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
+    return [dict(row._mapping) for row in results]
+
+# get user predictions
+def get_user_predictions(db: Session, user_id: str, skip: int = 0, limit: int = 100):
+    results = (
+        db.query(
+            Prediction.id.label("prediction_id"),
+            Prediction.target_timestamp,
+            Prediction.stake_amount,
+            Prediction.confidence,
+            Prediction.result,
+            Prediction.predicted_price,
+            Prediction.reward,
+            Prediction.current_price,
+            Token.id.label("token_id"),
+            Token.symbol.label("token_symbol"),
+            Token.name.label("token_name"),
+        )
+        # .join(User, Prediction.user_id == User.id)  # Remove this line
+        .join(Token, Prediction.token_id == Token.id)
+        .filter(Prediction.user_id == user_id)
         .order_by(Prediction.created_at.desc())
         .offset(skip)
         .limit(limit)

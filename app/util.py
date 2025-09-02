@@ -25,6 +25,7 @@ def authenticate_and_get_user_details(request):
 
         return {"user_id": user_id}
     except Exception as e:
+        print(e)
         raise HTTPException(status_code=401, detail="Authentication failed")
 
 # uvicorn main:app --reload

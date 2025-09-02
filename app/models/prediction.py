@@ -32,6 +32,7 @@ class Prediction(Base):
     confidence = Column(Float)
     stake_amount = Column(Float, nullable=False)
     result = Column(Enum("Pending", "Correct", "Incorrect", name="prediction_result"), default="Pending")
+    reward = Column(Float, default=0.0)
     resolution_timestamp = Column(DateTime)
     resolution_method = Column(Enum(ResolutionMethod), default=ResolutionMethod.exact)
     payment_method = Column(Enum(PaymentMethod), default=PaymentMethod.internal)

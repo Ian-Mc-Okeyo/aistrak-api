@@ -2,7 +2,7 @@ from fastapi import APIRouter, Request, HTTPException, Depends
 from app.core.database import get_db
 from app.schemas.prediction import CreateMpesaPrediction
 from sqlalchemy.orm import Session
-from app.crud.prediction import create_mpesa_prediction, count_active_predictions, get_total_staked_amount, get_predictions_with_details
+from app.crud.prediction import create_mpesa_prediction, get_user_predictions, count_active_predictions, get_total_staked_amount, get_predictions_with_details
 from app.util import authenticate_and_get_user_details
 
 router = APIRouter()
@@ -32,4 +32,11 @@ def get_predictions_list_router(
 ):
     authenticate_and_get_user_details(request)
     predictions = get_predictions_with_details(db, skip=skip, limit=limit)
+    return {"status": "Success", "predictions": predictions}
+
+@router.get("/user/all")
+def get_user_predictions_router(request: Request, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    user_details = authenticate_and_get_user_details(request)
+    user_id = user_details["user_id"]
+    predictions = get_user_predictions(db, user_id, skip=skip, limit=limit)
     return {"status": "Success", "predictions": predictions}

@@ -9,6 +9,7 @@ import random
 from sqlalchemy.orm import Session
 from app.models.transaction import MpesaTransaction, Transaction
 from app.models.prediction import Prediction
+from app.models.user import UserAchievement
 from app.models.wallet import UserWallet
 from fastapi import HTTPException
 from uuid import uuid4
@@ -17,6 +18,45 @@ from dotenv import load_dotenv
 load_dotenv()
 
 logger = logging.getLogger("default")
+
+def complete_prediction_payment(db: Session, reference: str):
+    # get the prediction
+    prediction = db.query(Prediction).filter_by(payment_reference=reference).first()
+    prediction.payment_status = "Complete"
+
+    # update the wallet balance
+    user_wallet = db.query(UserWallet).filter_by(user_id=prediction.user_id).first()
+    if user_wallet:
+        user_wallet.total_staked += prediction.stake_amount
+        user_wallet.updated_at = datetime.now()
+
+    # create the achievement for first prediction
+    user_first_prediction = db.query(UserAchievement).filter_by(
+        user_id=prediction.user_id,
+        achievement_type="first_prediction"
+    ).first()
+    
+    if not user_first_prediction:
+        user_achievement = UserAchievement(
+            user_id=prediction.user_id,
+            achievement_type="first_prediction",
+            earned_at=datetime.now(),
+        )
+        db.add(user_achievement)
+    
+    if user_wallet.total_staked >= 100:
+        high_roller_achievement = db.query(UserAchievement).filter_by(
+            user_id=prediction.user_id,
+            achievement_type="high_roller"
+        ).first()
+
+        if not high_roller_achievement:
+            user_achievement2 = UserAchievement(
+                user_id=prediction.user_id,
+                achievement_type="high_roller",
+                earned_at=datetime.now(),
+            )
+            db.add(user_achievement2)
 
 class MpesaGateWay:
     def __init__(self):
@@ -122,21 +162,16 @@ class MpesaGateWay:
                         mpesa_tx.phone_number = str(item["Value"])
                 mpesa_tx.status = "Complete"
 
-                # get the prediction
-                prediction = db.query(Prediction).filter_by(payment_reference=mpesa_tx.reference).first()
-                prediction.payment_status = "Complete"
-
-                # update the wallet balance
-                user_wallet = db.query(UserWallet).filter_by(user_id=prediction.user_id).first()
-                if user_wallet:
-                    user_wallet.total_staked += prediction.stake_amount
-                    user_wallet.updated_at = datetime.now()
-
                 # update the transaction in the database
                 internal_tx = db.query(Transaction).filter_by(tx_hash=mpesa_tx.reference).first()
                 if internal_tx:
                     internal_tx.status = "Complete"
                     internal_tx.mpesa_receipt = mpesa_tx.receipt_no
+
+                    if internal_tx.tx_type == "Stake":
+                        # update the prediction and wallet
+                        complete_prediction_payment(db, mpesa_tx.reference)
+
             else:
                 mpesa_tx.status = "Pending"
 
