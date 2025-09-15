@@ -25,9 +25,12 @@ class TokenProposal(Base):
     token_name = Column(String(100), nullable=False)
     description = Column(Text, nullable=False)
     status = Column(Enum("active", "approved", "rejected", "expired", name="proposal_status"), default="active")
+    payment_reference = Column(String(100), nullable=True) # for mpesa
+    payment_status = Column(Enum("Pending", "Complete", "Failed", name="payment_status"), default="Pending")
     total_votes = Column(Integer, default=0)
     votes_needed = Column(Integer, default=1000)
     expires_at = Column(DateTime, nullable=False)
+    approved_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.now)
 
 class ProposalVote(Base):
@@ -35,5 +38,7 @@ class ProposalVote(Base):
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid4()))
     proposal_id = Column(String(36), ForeignKey("token_proposals.id"))
+    payment_reference = Column(String(100), nullable=True) # for mpesa
+    payment_status = Column(Enum("Pending", "Complete", "Failed", name="payment_status"), default="Pending")
     user_id = Column(String(36), ForeignKey("users.id"))
     created_at = Column(DateTime, default=datetime.now)

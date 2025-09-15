@@ -9,6 +9,7 @@ import random
 from sqlalchemy.orm import Session
 from app.models.transaction import MpesaTransaction, Transaction
 from app.models.prediction import Prediction
+from app.models.token import TokenProposal, ProposalVote
 from app.models.user import UserAchievement
 from app.models.wallet import UserWallet
 from fastapi import HTTPException
@@ -57,6 +58,26 @@ def complete_prediction_payment(db: Session, reference: str):
                 earned_at=datetime.now(),
             )
             db.add(user_achievement2)
+
+def complete_token_proposal_payment(db: Session, reference: str):
+    # get the proposal
+    proposal = db.query(TokenProposal).filter_by(payment_reference=reference).first()
+    proposal.payment_status = "Complete"
+
+def complete_proposal_vote_payment(db: Session, reference: str):
+    # get the vote
+    vote = db.query(ProposalVote).filter_by(payment_reference=reference).first()
+    if vote:
+        vote.payment_status = "Complete"
+        # increment the total votes for the proposal
+        proposal = db.query(TokenProposal).filter_by(id=vote.proposal_id).first()
+        if proposal:
+            proposal.total_votes += 1
+            
+            if proposal.total_votes >= proposal.votes_needed:
+                proposal.status = "approved"
+                proposal.approved_at = datetime.now()
+            db.commit()
 
 class MpesaGateWay:
     def __init__(self):
@@ -112,9 +133,9 @@ class MpesaGateWay:
             "PartyB": self.shortcode,
             "PhoneNumber": phone_number,
             "CallBackURL": self.c2b_callback,
-            "AccountReference": "AISTRAK PREDICTION",
+            "AccountReference": "AISTRAK",
             "TransactionDesc": reference,
-            "BillRefNumber": "AISTRAK PREDICTION"
+            "BillRefNumber": "AISTRAK"
         }
 
         res = requests.post(
@@ -171,6 +192,14 @@ class MpesaGateWay:
                     if internal_tx.tx_type == "Stake":
                         # update the prediction and wallet
                         complete_prediction_payment(db, mpesa_tx.reference)
+                    
+                    if internal_tx.tx_type == "Proposal":
+                        # update the token proposal payment status
+                        complete_token_proposal_payment(db, mpesa_tx.reference)
+
+                    if internal_tx.tx_type == "Vote":
+                        # update the proposal vote payment status
+                        complete_proposal_vote_payment(db, mpesa_tx.reference)
 
             else:
                 mpesa_tx.status = "Pending"

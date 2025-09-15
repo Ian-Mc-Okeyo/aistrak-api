@@ -21,7 +21,7 @@ class Transaction(Base):
     id = Column(String(36), primary_key=True, default=lambda: str(uuid4()))
     user_id = Column(String(36), ForeignKey("users.id"))
     amount = Column(Float, nullable=False)
-    tx_type = Column(Enum("Stake", "Reward", "Deposit", "Withdrawal", "Proposal", name="transaction_type"))
+    tx_type = Column(Enum("Stake", "Reward", "Deposit", "Withdrawal", "Proposal", "Vote", name="transaction_type"))
     status = Column(Enum("Pending", "Complete", "Failed", name="transaction_status"), default="Pending")
     payment_method = Column(Enum(PaymentMethod))
     tx_hash = Column(String(255), nullable=True)
